@@ -314,6 +314,7 @@ soccer_bias <- unique(soccer_bias) # include only unique records for players
 head(soccer_bias)
 ```
 
+commit test
 
 
 rmarkdown::run("gettingStartedHard.Rmd")
