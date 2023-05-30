@@ -7,6 +7,8 @@ description: "Welcome to mverse!"
 
 ```{r setup, include=FALSE}
 library(learnr)
+library(tidyverse)
+library(ggplot2)
 # install.packages("remotes")
 remotes::install_github("rstudio/gradethis")
 gradethis::gradethis_setup()
@@ -67,37 +69,41 @@ mv <- create_multiverse(df)
 
 ### Step 2: `mutate_branch` to transform `col1`
 
-Next, we will apply three different transformations to `col1`. Each transformation will create a different branch, and each branch corresponds to a universe. So, this multiverse will have three different universes. Branch `col1` will have no transformation on `col1`, Branch `col1_t1` will take the log of absolute value of `col1 + 1`, and Branch `col1_t2` will take the absolute value of `col1`. 
+Next, we will apply three different transformations to `col1`. Each transformation will create a different _branch_, and each branch corresponds to a universe. A branch in `mverse` refers to different modelling or data wrangling decisions. For example, a mutate branch - analogous to `mutate` method in `tidyverse`'s data manipulation grammar - lets you define a set of options for defining a new column in your dataset. 
+
+You can create a mutate branch with `mutate_branch()`. The syntax for defining the options inside `mutate_branch()` follows the `tidyverse`'s grammar as well. 
+
+In this case, Branch `col1` will have no transformation on `col1`, Branch `col1_t1` will take the log of absolute value of `col1 + 1`, and Branch `col1_t2` will take the absolute value of `col1`. 
 
 Modify the code below to reflect the described transformations. 
 
 ```{r ex1step2, exercise.setup = "ex1step1", include=FALSE}
-transformation_branch <- mutate_branch(col1 = col1,
+transformation <- mutate_branch(col1 = col1,
                                        col1_t1 = log(abs(col1 + 1)),
                                        col1_t2 = abs(col1))
 
 ```
 
 ```{r ex1step2Exc,  exercise=TRUE, exercise.setup = "ex1step1", exercise.blanks = TRUE}
-transformation_branch <- mutate_branch(col1 = ____,
+transformation <- mutate_branch(col1 = ____,
                                        col1_t1 = ____,
                                        col1_t2 = ____)
 ```
 
 ```{r ex1step2Exc-hint-1, exercise.blanks = TRUE}
-transformation_branch <- mutate_branch(col1 = col1,
+transformation <- mutate_branch(col1 = col1,
                                        col1_t1 = ____,
                                        col1_t2 = ____)
 ```
 
 ```{r ex1step2Exc-hint-2, exercise.blanks = TRUE}
-transformation_branch <- mutate_branch(col1 = col1,
+transformation <- mutate_branch(col1 = col1,
                                        col1_t1 = log(abs(col1 + 1)),
                                        col1_t2 = ____)
 ```
 
 ```{r ex1step2Exc-hint-3}
-transformation_branch <- mutate_branch(col1 = col1,
+transformation <- mutate_branch(col1 = col1,
                                        col1_t1 = log(abs(col1 + 1)),
                                        col1_t2 = abs(col1))
 ```
@@ -105,10 +111,10 @@ transformation_branch <- mutate_branch(col1 = col1,
 
 ### Step 3: `add_mutate_branch` to `mv`
 
-In this step, we will add the mutated branches (`transformation_branch`) to our multiverse object, `mv`. Add the mutated branches to `mv` using `add_mutate_branch()`.
+In this step, we will add the mutated branches (`transformation`) to our multiverse object, `mv`. Add the mutated branches to `mv` using `add_mutate_branch()`.
 
 ```{r ex1step3, exercise.setup = "ex1step2", include=FALSE}
-mv <- mv %>% add_mutate_branch(transformation_branch)
+mv <- mv %>% add_mutate_branch(transformation)
 ```
 
 ```{r ex1step3Exc, exercise=TRUE, exercise.setup = "ex1step2", excercise.blanks = TRUE}
@@ -116,8 +122,17 @@ mv <- mv %>% ____
 ```
 
 ```{r ex1step3Exc-solution}
-mv <- mv %>% add_mutate_branch(transformation_branch)
+mv <- mv %>% add_mutate_branch(transformation)
 ```
+
+Adding a branch to an `mverse` object multiplies the number of environments defined inside the object so that the environments capture all unique analysis paths. Without any branches, a `mverse` object has a single environment. We call these environments _universes_. For example, adding the `transformation` mutated branch to `mv` results in $1 \times 3 = 3$ universes inside `mv`. In each universe, the analysis dataset now has a new column named `transformation` -- the name of the mutate branch object. 
+
+You can verify that the mutated branch was added to `mv` by calling `summary` on the object. Run the code below to verify that there are three universes in this multiverse, and that each universe corresponds to one of the transformations on `col1`. 
+
+```{r ex1step3B, exercise=TRUE, exercise.setup = "ex1step3"}
+summary(mv)
+```
+
 
 ### Step 4: `execute_multiverse` to execute the transformations
 
@@ -291,30 +306,214 @@ You might be wondering why you need the `mverse` package at all if the analysis 
 
 ## Exercise: Are Soccer Referees Biased?
 
+```{r soccerLoad, include=FALSE}
+library(mverse)
+soccer_bias <- mverse::soccer[!is.na(mverse::soccer$rater1) & !is.na(mverse::soccer$rater2), 
+                              c('playerShort', 'rater1', 'rater2')] # include only those with both ratings
+soccer_bias <- unique(soccer_bias) # include only unique records for players
+```
+
+
 In this example, we use a real dataset to demonstrate how `mverse` allows to easily compare multiple definitions for a column, as well as the results from these different definitions. This dataset is included in the `mverse` package under the name `soccer`. 
 
-The data comes from @datasrc and contains `r format(nrow(soccer), big.mark = ",")` rows of player-referee pairs. For each player, two independent raters coded their skin tones on a 5-point scale ranging from _very light skin_ (`0.0`) to _very dark skin_ (`1.0`). For the purpose of demonstration, we only use a unique record per player and consider only those with both ratings. 
+The data comes from @datasrc and contains `r format(nrow(mverse::soccer), big.mark = ",")` rows of player-referee pairs. For each player, two independent raters coded their skin tones on a 5-point scale ranging from _very light skin_ (`0.0`) to _very dark skin_ (`1.0`). For the purpose of demonstration, we only use a unique record per player and consider only those with both ratings. 
 
 We aim to combine the two ratings into one measure, but there are many ways to do so. In this example, we will explore how different methods of combining the ratings impact the distributions of the results. 
 
 We would like to study the distribution of the player skin tones but the two independent rating do not always match. To combine the two ratings, we may choose to consider the following options:
 
-1.  the mean numeric value
-2.  the darker rating of the two
-3.  the lighter rating of the two
+1.  the mean of the two ratings
+2.  the darker rating (closer to 1.0) of the two ratings
+3.  the lighter rating  (closer to 0.0) of the two
 4.  the first rating only
 5.  the second rating only
 
+First, we will load in the data. Run the chunk below to do so. 
 
-```{r load, exercise=TRUE,  exercise.setup = "cranInstall", message=FALSE}
+```{r soccerLoadExc, exercise=TRUE,  exercise.setup = "cranInstall", message=FALSE}
 library(mverse)
-soccer_bias <- soccer[!is.na(soccer$rater1) & !is.na(soccer$rater2), 
-             c('playerShort', 'rater1', 'rater2')] # include only those with both ratings
+soccer_bias <- mverse::soccer[!is.na(mverse::soccer$rater1) & !is.na(mverse::soccer$rater2), 
+                              c('playerShort', 'rater1', 'rater2')] # include only those with both ratings
 soccer_bias <- unique(soccer_bias) # include only unique records for players
+```
+
+
+Now explore the dataset. Try to view the first six rows. 
+
+```{r head, exercise=TRUE,  exercise.setup = "soccerLoadExc", message=FALSE}
+
+```
+
+<div id="head-hint">
+  **Hint:** You may want to use the `head()` function.
+</div>
+  
+```{r head-solution}
 head(soccer_bias)
 ```
 
-commit test
+## Analysis using Base R and `Tidyverse`
+
+Let's first consider how you might study the five options using R using `tidyverse` and base R, without `mverse`. First, we define the five rating combinations as separate variables in R.
+
+The ratings for each player can be accessed with `soccer_bias$rater1` and `soccer_bias$rater2`. The first combination, the mean of the two ratings, has been written for you. Calculate the remaining four options according to the list above. You may want to make use of the `ifelse()` function. 
+
+```{r base_r, exercise.setup = "soccerLoadExc", include=FALSE}
+skin_option_1 <- (soccer_bias$rater1 + soccer_bias$rater2) / 2 
+skin_option_2 <- ifelse(soccer_bias$rater1 > soccer_bias$rater2, soccer_bias$rater1, soccer_bias$rater2)
+skin_option_3 <- ifelse(soccer_bias$rater1 < soccer_bias$rater2, soccer_bias$rater1, soccer_bias$rater2)
+skin_option_4 <- soccer_bias$rater1    
+skin_option_5 <- soccer_bias$rater2    
+```
+
+```{r base_rExc, exercise = TRUE, exercise.setup = "soccerLoadExc", excercise.blanks = TRUE}
+skin_option_1 <- (soccer_bias$rater1 + soccer_bias$rater2) / 2 
+skin_option_2 <- ____
+skin_option_3 <- ____
+skin_option_4 <- ____
+skin_option_5 <- ____   
+```
+
+```{r base_rExc-solution}
+skin_option_1 <- (soccer_bias$rater1 + soccer_bias$rater2) / 2 
+skin_option_2 <- ifelse(soccer_bias$rater1 > soccer_bias$rater2, soccer_bias$rater1, soccer_bias$rater2)
+skin_option_3 <- ifelse(soccer_bias$rater1 < soccer_bias$rater2, soccer_bias$rater1, soccer_bias$rater2)
+skin_option_4 <- soccer_bias$rater1    
+skin_option_5 <- soccer_bias$rater2    
+```
+
+We can plot a histogram to study the distribution of the resulting skin tone value for each option. Run the chunk below to view the histogram for the first option (`skin_option_1`).
+
+```{r hist_base, exercise.setup = "base_r", exercise=TRUE}
+library(ggplot2)
+ggplot(mapping=aes(x = skin_option_1)) +
+  geom_histogram(breaks = seq(0,1,0.2),
+                 colour = 'white') +
+  labs(title = 'Histogram of player skin tones (Option 1: Mean).',
+       x = 'Skin Tone', y = 'Count')
+```
+
+For the remaining four options, we can repeat the step above to examine the distributions, or create a new data frame combining all five options to use in a ggplot as shown below. In both cases, users need to take care of plotting all five manually. Run the code below to view all five histograms. 
+
+```{r hist_base_overlaid, exercise.setup = "base_r", exercise = TRUE}
+skin_option_all <- data.frame(
+  x = c(skin_option_1, skin_option_2, skin_option_3, skin_option_4, skin_option_5),
+  Option = rep(c(
+    'Option 1: Mean', 'Option 2: Max', 'Option 3: Min', 
+    'Option 4: Rater 1', 'Option 5: Rater 2'), each = nrow(df)
+    )
+  )
+ggplot(data = skin_option_all) +
+  geom_histogram(aes(x = x), binwidth = 0.1) +
+  labs(title = 'Histogram of player skin tones for each option.',
+       x = 'Skin Tone', y = 'Count') +
+  facet_wrap(. ~ Option)
+```
+
+## Analysis Using `mverse`
+
+Perhaps using `mverse` requires less manual coding. We will now use this package to create the five options above. 
+
+### Branching Using `mverse`
+
+First, define an `mverse` object with the dataset.
+
+```{r mvCreate, exercise.setup = "soccerLoad", include=FALSE, exercise = TRUE}
+soccer_bias_mv <- create_multiverse(soccer_bias)
+```
+
+```{r mvCreateExc, exercise.setup = "soccerLoad", exercise = TRUE, exercise.blanks = TRUE}
+soccer_bias_mv <- ____
+```
+
+<div id="mvCreateExc-hint">
+**Hint:** You may want to use the `create_multiverse()` function.
+</div>
+
+```{r mvCreateExc-solution}
+soccer_bias_mv <- create_multiverse(soccer_bias)
+```
+
+We can then use the `mutate_branch()` function to create the five different branches. In the chunk below, use this function and the the list of combinations to define the five branches.
+
+```{r mutate_branch, exercise=TRUE, exercise.setup="mvCreate", include=FALSE}
+skin_tone <- mutate_branch(
+  (rater1 + rater2)/2,
+  ifelse(rater1 > rater2, rater1, rater2),
+  ifelse(rater1 < rater2, rater1, rater2),
+  rater1,
+  rater2
+)
+```
+
+```{r mutate_branchExc, exercise=TRUE, exercise.setup="mvCreate", exercise.blanks=TRUE}
+skin_tone <- ____
+```
+
+```{r mutate_branchExc-hint}
+skin_tone <- mutate_branch(
+  # calculation for average
+  ,
+  # calculation for max
+  , 
+  # calculation for min
+  , 
+  # rater1
+  , 
+  # rater 2
+)
+```
+
+```{r mutate_branchExc-solution}
+skin_tone <- mutate_branch(
+  (rater1 + rater2)/2,
+  ifelse(rater1 > rater2, rater1, rater2),
+  ifelse(rater1 < rater2, rater1, rater2),
+  rater1,
+  rater2
+)
+```
+
+Now, add the newly defined mutate branch to the `mv` object using `add_mutate_branch()`. 
+
+```{r add_vb, exercise=TRUE, exercise.setup="mutate_branch", include=FALSE}
+soccer_bias_mv <- soccer_bias_mv %>% add_mutate_branch(skin_tone)
+```
+
+```{r add_vbExc, exercise=TRUE, exercise.setup = "mutate_branch", excercise.blanks = TRUE}
+soccer_bias_mv <- soccer_bias_mv %>% ____
+```
+
+<div id="add_vbExc-hint">
+**Hint:** You may want to use the `add_mutate_branch()` function.
+</div>
+
+```{r add_vbExc-solution}
+soccer_bias_mv <- soccer_bias_mv %>% add_mutate_branch(skin_tone)
+```
+
+Recall that adding a branch to an `mverse` object multiplies the existing environments within the object by the number of analysis paths within the new branch. Without any branches, the `soccer_bias_mv` object has a single environment -- a single universe. Because there are 5 analysis paths defined in `skin_tone`, we now have $1 \times 5 = 5$ environments. Our multiverse has expanded to encompass these 5 different universes. 
+
+To verify that the mutated branch was added, call `summary()` on the `soccer_bias_mv` object. You should see a multiverse table that lists all universes, with the branches as columns and corresponding options as values.
+
+```{r summaryExc, exercise=TRUE, exercise.setup = "add_vb"}
+summary(soccer_bias_mv)
+```
+
+At this point, the values of the new column `skin_tone` are only populated in the first universe. To populate the values for all universes, we call `execute_multiverse()` on our multiverse object. Write the code below to conduct that process. 
+
+```{r exec, exercise.setup="add_vb", exercise=TRUE, include=FALSE}
+execute_multiverse(soccer_bias_mv)
+```
+
+```{r execExc, exercise.setup="add_vb", exercise=TRUE}
+
+```
+
+```{r execExc-solution}
+execute_multiverse(soccer_bias_mv)
+```
+
 
 
 rmarkdown::run("gettingStartedHard.Rmd")
