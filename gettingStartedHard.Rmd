@@ -1,0 +1,319 @@
+---
+title: "Getting started with mverse!"
+output: learnr::tutorial
+runtime: shiny_prerendered
+description: "Welcome to mverse!"
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+# install.packages("remotes")
+remotes::install_github("rstudio/gradethis")
+gradethis::gradethis_setup()
+#install.packages("tidyverse")
+
+```
+
+## Installation 
+
+Install the `mverse` package from CRAN. You may have to set a mirror using `repos = "http://cran.us.r-project.org"`. 
+
+```{r cranInstall, include=FALSE}
+install.packages("mverse", repos = "http://cran.us.r-project.org")
+```
+
+```{r cranInstallExc, exercise=TRUE}
+
+```
+
+```{r cranInstallExc-hint}
+install.packages( # insert more code here 
+  )
+```
+
+```{r cranInstallExc-solution}
+install.packages("mverse", repos = "http://cran.us.r-project.org")
+```
+
+
+## Warm-Up 1: Transform and Summarise One Numeric Column
+
+Suppose that we have a column `col1` that we wish to transform in three different ways and compute the five number summary of the column after the transformations.
+
+```{r ex1Installation, message=FALSE, exercise=TRUE, exercise.setup="cranInstall"}
+library(tidyverse)
+library(mverse)
+set.seed(6) # For reproducibility
+df <- tibble(col1 = rnorm(5, 0, 1), col2 = col1 + runif(5))
+df
+```
+
+### Step 1: `create_multiverse` of the data frame
+
+Create a multiverse object (`mv`) from `df` using `create_multiverse()`. 
+
+```{r ex1step1, exercise.setup = "ex1Installation", include=FALSE}
+mv <- create_multiverse(df)
+```
+
+```{r ex1step1Exc, exercise=TRUE, exercise.setup = "ex1Installation"}
+
+```
+
+```{r ex1step1Exc-solution}
+mv <- create_multiverse(df)
+```
+
+
+### Step 2: `mutate_branch` to transform `col1`
+
+Next, we will apply three different transformations to `col1`. Each transformation will create a different branch, and each branch corresponds to a universe. So, this multiverse will have three different universes. Branch `col1` will have no transformation on `col1`, Branch `col1_t1` will take the log of absolute value of `col1 + 1`, and Branch `col1_t2` will take the absolute value of `col1`. 
+
+Modify the code below to reflect the described transformations. 
+
+```{r ex1step2, exercise.setup = "ex1step1", include=FALSE}
+transformation_branch <- mutate_branch(col1 = col1,
+                                       col1_t1 = log(abs(col1 + 1)),
+                                       col1_t2 = abs(col1))
+
+```
+
+```{r ex1step2Exc,  exercise=TRUE, exercise.setup = "ex1step1", exercise.blanks = TRUE}
+transformation_branch <- mutate_branch(col1 = ____,
+                                       col1_t1 = ____,
+                                       col1_t2 = ____)
+```
+
+```{r ex1step2Exc-hint-1, exercise.blanks = TRUE}
+transformation_branch <- mutate_branch(col1 = col1,
+                                       col1_t1 = ____,
+                                       col1_t2 = ____)
+```
+
+```{r ex1step2Exc-hint-2, exercise.blanks = TRUE}
+transformation_branch <- mutate_branch(col1 = col1,
+                                       col1_t1 = log(abs(col1 + 1)),
+                                       col1_t2 = ____)
+```
+
+```{r ex1step2Exc-hint-3}
+transformation_branch <- mutate_branch(col1 = col1,
+                                       col1_t1 = log(abs(col1 + 1)),
+                                       col1_t2 = abs(col1))
+```
+
+
+### Step 3: `add_mutate_branch` to `mv`
+
+In this step, we will add the mutated branches (`transformation_branch`) to our multiverse object, `mv`. Add the mutated branches to `mv` using `add_mutate_branch()`.
+
+```{r ex1step3, exercise.setup = "ex1step2", include=FALSE}
+mv <- mv %>% add_mutate_branch(transformation_branch)
+```
+
+```{r ex1step3Exc, exercise=TRUE, exercise.setup = "ex1step2", excercise.blanks = TRUE}
+mv <- mv %>% ____
+```
+
+```{r ex1step3Exc-solution}
+mv <- mv %>% add_mutate_branch(transformation_branch)
+```
+
+### Step 4: `execute_multiverse` to execute the transformations
+
+Now we will execute the analysis across the entire multiverse. Apply `execute_multiverse()` to `mv`, and save it to a multiverse object also called `mv`. 
+
+
+```{r ex1step4, exercise.setup = "ex1step3", include=FALSE }
+mv <- execute_multiverse(mv)
+```
+
+```{r ex1step4Exc, exercise=TRUE, exercise.setup = "ex1step3" , excercise.blanks = TRUE}
+mv <- ____
+```
+
+```{r ex1step4Exc-solution}
+mv <- execute_multiverse(mv)
+```
+
+### Step 5: Extract Transformed Values from `mv`
+
+To extract the transformed values from `mv`, we can use the `extract` function. This function returns the transformed values along with their respective branch. We can then add this information to `df_transformed`. 
+
+```{r ex1step5,exercise=TRUE, exercise.setup = "ex1step4" }
+df_transformed <- extract(mv)
+```
+
+Use the `head()` function to explore `df_transformed`. 
+
+```{r ex1step5B,exercise=TRUE, exercise.setup="ex1step5"}
+```
+
+```{r ex1step5B-solution}
+df_transformed %>% head()
+```
+
+### Step 6: use `tidyverse` to compute the summary and plot the distribution of each transformation (universe)
+
+We are now ready to compare the results from the different universes. Notice how different the mean, standard deviation, median, and IQR are between the universes.
+
+We can also explore the universes visually using histograms. Feel free to change the number of bins to further investigate the shape of the distributions. 
+
+```{r ex1step6A,exercise=TRUE, exercise.setup = "ex1step5"}
+df_transformed %>% 
+  group_by(transformation_branch_branch) %>% 
+  summarise(n = n(), 
+            mean = mean(transformation_branch), 
+            sd = sd(transformation_branch),
+            median = median(transformation_branch),
+            IQR = IQR(transformation_branch))
+ df_transformed %>% 
+          ggplot(aes(x = transformation_branch)) + geom_histogram(bins = 3) +
+          facet_wrap(vars(transformation_branch_branch))
+```
+
+## Warm-Up 2: Using `mverse` to Fit Three Simple Linear Regression of a Transformed Column
+
+In this example, we again compare the three different transformations of `col1`. However, we will now use the three transformations to conduct simple linear regressions to predict `col2`. As such, this multiverse will have three universes -- one for each transformation of `col1`. 
+
+### Step 1: `create_multiverse` of the data frame
+
+Create a multiverse object named `mv1` from `df`. 
+
+```{r ex2step1, exercise.setup = "ex1Installation", include=FALSE}
+mv1 <- create_multiverse(df)
+```
+
+```{r ex2step1Exc, exercise=TRUE, exercise.setup = "ex1Installation"}
+
+```
+
+<div id="ex2step1Exc-hint">
+**Hint:** You may want to use the `create_mutliverse()` function.
+</div>
+
+
+```{r ex2step1Exc-solution}
+mv1 <- create_multiverse(df)
+```
+
+### Step 2: Create `formula_branch` of the linear regression models
+
+In this scenario, each branch/universe corresponds to one of the three linear regressions using some transformation of `col1` to predict `col2`. In this step, we will create the three branches. 
+
+`mverse` has a function specifically for adding formula branches called `formula_branch()`, which works similarly to the `mutate_branch()` function we used in Exercise 1. Run the code chunk below to create the `formulas` object. 
+
+```{r ex2step2, exercise.setup = "ex2step1", exercise=TRUE}
+formulas <- formula_branch(col2 ~ col1, 
+                           col2 ~ log(abs(col1 + 1)), 
+                           col2 ~ abs(col1))
+```
+
+### Step 3: `add_formula_branch` to multiverse of data frame
+
+We will now add the branch `formulas` to our multiverse `mv1`. Using the function `add_formula_branch()`, add `formulas` to `mv1` and save the new multiverse object under the same name. 
+
+
+```{r ex2step3, exercise.setup = "ex2step2", include=FALSE}
+mv1 <- mv1 %>% add_formula_branch(formulas)
+```
+
+```{r ex2step3Exc, exercise=TRUE, exercise.setup = "ex2step2", excercise.blanks = TRUE}
+mv1 <- mv1 %>% ____
+```
+
+<div id="ex2step3Exc-hint">
+**Hint:** You may want to use the `add_formula_branch()` function.
+</div>
+
+```{r ex2step3Exc-solution}
+mv1 <- mv1 %>% add_formula_branch(formulas)
+```
+
+### Step 4: `lm_mverse` to compute linear regression models across the multiverse
+
+The `mverse` function `lm_mverse()` computes simple linear regression models across the entire multiverse object. Run the code chunk below to conduct this process. 
+
+```{r ex2step4Exc, exercise=TRUE, exercise.setup = "ex2step3"}
+lm_mverse(mv1)
+```
+
+### Step 5: `lm_mverse` to compute linear regression models across the multiverse
+
+Write a line of code to view a summary of `mv1`, which now contains information about the linear regressions preformed.  
+
+```{r ex2step5, exercise.setup = "ex2step4Exc", include=FALSE}
+summary(mv1)
+```
+
+```{r ex2step5Exc, exercise=TRUE, exercise.setup = "ex2step4Exc"}
+
+```
+
+```{r ex2step5Exc-hint-1}
+summary( #insert multiverse object here
+  )
+```
+
+```{r ex2step5Exc-solution}
+summary(mv1)
+```
+
+What do you notice about the predicted intercepts and coefficients for each of the branches? Are they similar to each other, or are they different? How does standard error vary across the models? Are the predictions significant? 
+
+### Step 6: Comparing `mverse` to `tidyverse`
+
+Given that we are only considering 3 branches, we can easily compare the results of the `mverse` analysis to what would be produced using `tidyverse` and base R. 
+
+Using `tidyverse`, we will create a list of model formulas and map the list to the linear regression function `lm()`. Run the code below to conduct this process.
+
+```{r ex2step6A, exercise=TRUE, exercise.setup = "ex2step5" }
+mod1 <- formula(col2 ~ col1)
+mod2 <- formula(col2 ~ log(abs(col1 + 1)))
+mod3 <- formula(col2 ~ abs(col1))
+models <- list(mod1, mod2, mod3)
+models %>% 
+  map(lm, data = df) %>% 
+  map(broom::tidy) %>% 
+  bind_rows()
+```
+
+Using base R, we will use `lapply` instead of mapping. Run the code below to conduct this process.
+
+```{r ex2step6B, exercise=TRUE, exercise.setup = "ex2step5" }
+modfit <- lapply(models, function(x) lm(x, data = df))
+lapply(modfit, function(x) summary(x)[4])
+```
+
+Compare the results using `tidyverse` and base R to the multiverse summary from Step 5. The results should be nearly identical. 
+
+You might be wondering why you need the `mverse` package at all if the analysis can be conducted using tools you already know. TODO: COME BACK TO THIS
+
+## Exercise: Are Soccer Referees Biased?
+
+In this example, we use a real dataset to demonstrate how `mverse` allows to easily compare multiple definitions for a column, as well as the results from these different definitions. This dataset is included in the `mverse` package under the name `soccer`. 
+
+The data comes from @datasrc and contains `r format(nrow(soccer), big.mark = ",")` rows of player-referee pairs. For each player, two independent raters coded their skin tones on a 5-point scale ranging from _very light skin_ (`0.0`) to _very dark skin_ (`1.0`). For the purpose of demonstration, we only use a unique record per player and consider only those with both ratings. 
+
+We aim to combine the two ratings into one measure, but there are many ways to do so. In this example, we will explore how different methods of combining the ratings impact the distributions of the results. 
+
+We would like to study the distribution of the player skin tones but the two independent rating do not always match. To combine the two ratings, we may choose to consider the following options:
+
+1.  the mean numeric value
+2.  the darker rating of the two
+3.  the lighter rating of the two
+4.  the first rating only
+5.  the second rating only
+
+
+```{r load, exercise=TRUE,  exercise.setup = "cranInstall", message=FALSE}
+library(mverse)
+soccer_bias <- soccer[!is.na(soccer$rater1) & !is.na(soccer$rater2), 
+             c('playerShort', 'rater1', 'rater2')] # include only those with both ratings
+soccer_bias <- unique(soccer_bias) # include only unique records for players
+head(soccer_bias)
+```
+
+
+
+rmarkdown::run("gettingStartedHard.Rmd")
