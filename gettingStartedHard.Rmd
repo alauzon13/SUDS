@@ -153,7 +153,7 @@ mv <- execute_multiverse(mv)
 
 ### Step 5: Extract Transformed Values from `mv`
 
-To extract the transformed values from `mv`, we can use the `extract` function. This function returns the transformed values along with their respective branch. We can then add this information to `df_transformed`. 
+To compare the values across universes, we can use the `extract()` function. By default, the method returns the transformed values along with their respective branches. We can then add this information to `df_transformed`. 
 
 ```{r ex1step5,exercise=TRUE, exercise.setup = "ex1step4" }
 df_transformed <- extract(mv)
@@ -352,7 +352,7 @@ Now explore the dataset. Try to view the first six rows.
 head(soccer_bias)
 ```
 
-## Analysis using Base R and `Tidyverse`
+### Analysis using Base R and `Tidyverse`
 
 Let's first consider how you might study the five options using R using `tidyverse` and base R, without `mverse`. First, we define the five rating combinations as separate variables in R.
 
@@ -410,11 +410,11 @@ ggplot(data = skin_option_all) +
   facet_wrap(. ~ Option)
 ```
 
-## Analysis Using `mverse`
+### Analysis Using `mverse`
 
 Perhaps using `mverse` requires less manual coding. We will now use this package to create the five options above. 
 
-### Branching Using `mverse`
+#### Branching Using `mverse`
 
 First, define an `mverse` object with the dataset.
 
@@ -514,6 +514,76 @@ execute_multiverse(soccer_bias_mv)
 execute_multiverse(soccer_bias_mv)
 ```
 
+#### Summarizing The Distribution Of Each Branch Option
 
+In this section, we now examine and compare the distributions of `skin_tone` values between different options. You can extract the values in each universe using `extract()`. Recall that the method returns all columns created by a mutate branch across all universes. In this example, we only have one column - `skin_tone`. Run the code below to conduct this process.
+
+```{r extract_multiverse, exercise=TRUE, exercise.setup="exec"}
+branched <- mverse::extract(soccer_bias_mv)
+head(branched)
+```
+
+`branched` is a dataset with `skin_tone` values. If we want to extract the `skin_tone` values that were computed using the average of the two raters then we can filter `branched` by `skin_tone_branch` values equal to `(rater1 + rater2)/2`.  Alternatively, we could filter by `universe == 1`.
+
+```{r head_skin_tone, exercise=TRUE, exercise.setup="extract_multiverse"}
+branched %>% 
+  filter(skin_tone_branch == "(rater1 + rater2)/2" ) %>% 
+  head()
+```
+
+The distribution of each method for calculating skin tone can be computed by grouping the levels of `skin_tone_branch`.
+
+```{r branchedSummary, exercise=TRUE, exercise.setup="extract_multiverse"}
+branched %>% 
+  group_by(skin_tone_branch) %>% 
+  summarise(n = n(), mean = mean(skin_tone), 
+            sd = sd(skin_tone), median = median(skin_tone), IQR = IQR(skin_tone))
+```
+
+Suppose you want to view a subset of the data, making sure to capture values from all of the universes. Selecting a random subset of rows data is useful when the multiverse is large. The `frow` parameter in `extract()` provides the option to extract a random subset of rows in each universe. It takes a value between 0 and 1 that represent the fraction of values to extract from each universe. For example, setting `frow = 0.05` returns approximately 5% of values from each universe (i.e., `skin_tone_branch` in this case).
+
+```{r extract_fraction,  exercise=TRUE, exercise.setup="exec"}
+frac <- mverse::extract(soccer_bias_mv, frow =  0.05)
+```
+
+So, in the resulting sample, each universe makes up $\frac{1}{5}$ or $20%$ of the sample. 
+
+```{r frac, exercise=TRUE, exercise.setup="extract_fraction" }
+frac %>%
+  group_by(universe) %>%
+  tally() %>%
+  mutate(percent = (n / sum(n)) * 100)
+```
+
+Finally, we can construct plots to compare the distributions of `skin_tone` in different universes. For example, you can overlay density lines on a single plot. Run the code below to view the density plot.
+
+```{r compare_universe, warning=FALSE, exercise=TRUE, exercise.setup="extract_multiverse"}
+branched %>%
+  ggplot(mapping = aes(x = skin_tone, color = universe)) +
+  geom_density(alpha = 0.2) +
+  labs(title = 'Density of player skin tones for each option',
+       x = 'Skin Tone', y = 'Density') +
+  scale_color_discrete(labels = c(
+    'Option 1: Mean', 'Option 2: Max', 'Option 3: Min', 
+    'Option 4: Rater 1', 'Option 5: Rater 2'),
+    name = NULL
+  )
+```
+
+Perhaps you would like to look at histograms of skin tones across the universes. Then, an option is the use `ggplot`'s `facet_grid` function to generate multiple plots in a grid. `facet_wrap(. ~ universe)` generates individual plots for each universe. Run the code below to view the histograms. 
+
+```{r compare_universe_hist, warning=FALSE, exercise=TRUE, exercise.setup="extract_multiverse"}
+branched %>%
+  ggplot(mapping = aes(x = skin_tone)) +
+  geom_histogram(position = 'dodge', breaks = seq(0,1,0.2)) +
+  labs(title = 'Histogram of player skin tones for each option.',
+       y = 'Count', x='Skin Tone') + 
+  facet_wrap(
+    . ~ universe, 
+    labeller = labeller(univrse = c(
+    'Option 1: Mean', 'Option 2: Max', 'Option 3: Min', 
+    'Option 4: Rater 1', 'Option 5: Rater 2'))
+  ) 
+```
 
 rmarkdown::run("gettingStartedHard.Rmd")
