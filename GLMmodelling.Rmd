@@ -1,0 +1,281 @@
+---
+title: "GLM modelling with mverse"
+output: learnr::tutorial
+runtime: shiny_prerendered
+description: "Welcome to mverse!"
+references:
+  - id: original
+    title: "Female hurricanes are deadlier than male hurricanes"
+    type: article-journal
+    issued:
+      year: 2014
+      month: 6
+      day: 17
+    URL: https://doi.org/10.1073/pnas.1402786111
+    DOI: 10.1073/pnas.1402786111
+    journal: Proceeedings fo the National Academiy of Sciences of the United States of America
+    volume: 111
+    issue: 24
+    page: 8782-8787
+    author:
+    - given: Kiju
+      family: Jung
+    - given: Sharon
+      family: Shavitt
+    - given: Madhu
+      family: Viswanathan
+    - given: "Joseph M."
+      family: Hilbe
+  - id: multiverse
+    title: "multiverse: R package for creating explorable multiverse analysis"
+    type: entry
+    URL: https://mucollective.github.io/multiverse/
+    accessed:
+      year: 2020
+    author:
+    - given: Abhraneel
+      family: Sarma
+    - given: Matthew
+      family: Kay
+  - id: boba
+    title: "Boba: Authoring and Visualizing Multiverse Analyses"
+    type: entry
+    URL: https://arxiv.org/abs/2007.05551
+    issued:
+      year: 2020
+      month: 7
+      day: 30
+    accessed:
+      year: 2020
+    author:
+    - given: Yang
+      family: Liu
+    - given: Alex
+      family: Kale
+    - given: Tim
+      family: Althoff
+    - given: Jeffrey
+      family: Heer
+---
+
+
+```{r setup, include=FALSE}
+library(learnr)
+library(tidyverse)
+library(ggplot2)
+# install.packages("remotes")
+remotes::install_github("rstudio/gradethis")
+gradethis::gradethis_setup()
+#install.packages("tidyverse")
+
+```
+
+This vignette aims to introduce the workflow of a multiverse analysis with generalized linear modelling using `mverse`.
+
+The typical workflow of a multiverse analysis with `mverse` is
+
+1.  Initialize a `multiverse` object with the dataset.
+2.  Define all the different data analyses (i.e., analytical decisions) as *branches*.
+3.  Add defined *branches* into the `multiverse` object.
+4.  Run models, hypothesis tests, and plots.
+
+## Exploring The Severity Of Feminine-named Versus Masculine-named Hurricanes
+
+In this example, we use a real dataset to demonstrate how `mverse` allows us to easily compare variations of generalized linear models (GLMs). Specifically, we will explore the severity of feminine- versus masculine-named hurricanes. This dataset is included in the `mverse` package under the name `hurricane`. The data comes from @original. 
+
+Run the code below to load in `mverse`, and to view the structure of the `hurricane` dataset. 
+
+```{r viewData, exercise = TRUE, exercise.setup = "setup"}
+library(mverse)
+glimpse(hurricane)
+```
+
+To start a multiverse analysis, first use `create_multiverse` to create an `mverse` object with `hurricane`. Name this multiverse object `hurricane_mv`. 
+
+```{r createMV, exercise = TRUE, exercise.setup = "viewData", include=FALSE}
+hurricane_mv <- create_multiverse(hurricane)
+```
+
+```{r createMVExc, exercise = TRUE, exercise.setup = "viewData"}
+
+```
+
+<div id="createMVExc-hint">
+**Hint:** You may want to use the `create_multiverse()` function.
+</div>
+
+```{r createMVExc-solution}
+hurricane_mv <- create_multiverse(hurricane)
+```
+
+
+Remember that at this point, the multiverse contains only one environment (the default). 
+
+### Define Branches in the Hurricane Multiverse
+
+Each branch defines a different statistical analysis by using a subset of data, transforming columns, or a statistical model. Each combination of these branches defines a "universe", or analysis path. Branches are defined using `X_branch(...)`, where `...` are expressions that define a data wrangling or modelling option/analytic decision that you wish to explore -- such as excluding certain hurricane names from an analysis, deriving new variables for analysis (mutating), or using different models. Once branches are defined we can look at the impact of the combination of these decisions.
+
+### Branches for Data Manipulation
+
+The `mverse` function `filter_branch` takes logical predicates, and finds the observations where the condition is `TRUE`. It can also be used to exclude outliers. 
+
+An important variable in the `hurricane` dataset is `alldeaths`, which indicates the number of deaths caused by a particular hurricane. 
+
+Run the code below to view the distribution of `alldeaths`. 
+
+```{r allDeathsHist, exercise=TRUE, exercise.setup="createMV"}
+hurricane %>% 
+  ggplot(aes(alldeaths)) + 
+  geom_histogram(bins = 25) + 
+  stat_bin(aes(label = ..count..), bins = 25, geom = "text", vjust = -.7, size = 2)
+```
+
+It looks like there are a few outliers. Let's find out which hurricanes are outliers. Run the code below to view the names of the outlier hurricanes. 
+
+```{r outliers, exercise=TRUE, exercise.setup="createMV"}
+hurricane %>% 
+  filter(alldeaths > median(alldeaths)) %>% 
+  arrange(desc(alldeaths)) %>% 
+  select(Name, alldeaths) %>% 
+  head()
+```
+
+It seems like hurricanes Katrina and Audrey have the most extreme death counts. 
+
+There are a few different ways to handle such outliers. Firstly, we can simply include them in our analysis. We can also just remove the most extreme observation -- in this case, Hurricane Katrina. Finally, we can exclude the two most extreme observations -- both Hurricane Katrina and Hurricane Audrey. We can use `filter_branch` to consider each of these options. 
+
+Run the code below to create a branch that considers all three outlier-handling options. 
+
+```{r filter_branch, exercise=TRUE, exercise.setup="createMV"}
+death_outliers <- filter_branch(obs_all = TRUE, 
+                                obs_noKat = Name != 'Katrina',
+                                obs_noKatAud = !(Name %in% c('Katrina', 'Audrey')))
+```
+
+Now, add this branch to `hurricane_mv` using the `add_filter_branch()` function. 
+
+```{r addBranch, exercise=TRUE, exercise.setup="filter_branch", include=FALSE}
+hurricane_mv <- hurricane_mv %>% add_filter_branch(death_outliers)
+```
+
+```{r addBranchExc, exercise=TRUE, exercise.setup="filter_branch", excercise.blanks=TRUE}
+hurricane_mv <- hurricane_mv %>% ____
+```
+
+
+```{r addBranchExc-solution}
+hurricane_mv <- hurricane_mv %>% add_filter_branch(death_outliers)
+```
+
+Now, call the `summary()` function on the mutliverse object `hurricane_mv` to ensure that there are three universes, and that each universe corresponds to an outlier-handling option. 
+
+```{r summary, exercise=TRUE, exercise.setup="addBranch"}
+
+```
+
+```{r summary-solution}
+summary(hurricane_mv)
+```
+
+Now suppose we want to consider two different definitions of femininity as provided in the dataset. `Gender_MF` is a binary classification of gender, and `MasFem` is a continuous rating of Femininity. We can use `mutate_branch()` to create a branch that details different transformations or definitions of the same variable. 
+
+Run the code below to create the `femininity` branch. 
+
+```{r mutate_branch, exercise=TRUE, exercise.setup="addBranchExc"}
+femininity <- mutate_branch(binary_gender = Gender_MF, 
+                            cts_gender = MasFem)
+```
+
+Suppose we also want to include normalized damage (NDAM) in our analysis. Run the code below to view a histogram of this variable. 
+
+```{r NDAMhist, exercise=TRUE, exercise.setup="mutate_branch"}
+hurricane %>% 
+  ggplot(aes(NDAM)) + 
+  geom_histogram(bins = 25) + 
+  stat_bin(aes(label = ..count..), bins = 25, geom = "text", vjust = -.7, size = 2)
+```
+
+Evidently, the NDAM variable is fairly right-skewed. Perhaps we want to consider log-transforming this variable to reduce the skewness. `mutate_branch()` can help us do so. 
+
+Following the creation of the `femininity` branch above, create a branch named `damage` with two options: 
+
+* `damage_orig`, which the same as the raw `NDAM` value in the dataset
+* `damage_log`, which is the log of the `NDAM` value in the dataset
+
+```{r mutate_branchDam, exercise=TRUE, exercise.setup="addBranchExc", include=FALSE}
+damage <- mutate_branch(damage_orig = NDAM, 
+                        damage_log = log(NDAM))
+```
+
+```{r mutate_branchDamExc, exercise=TRUE, exercise.setup="addBranchExc"}
+
+```
+
+```{r mutate_branchDamExc-hint-1}
+damage <- 
+```
+
+```{r mutate_branchDamExc-hint-2}
+damage <- mutate_branch( # create damage_orig,
+                         # create damage_log
+  )
+```
+
+```{r mutate_branchDamExc-hint-3}
+damage <- mutate_branch( damage_orig = NDAM,
+                         # create damage_log
+  )
+```
+
+```{r mutate_branchDamExc-solution}
+damage <- mutate_branch( damage_orig = NDAM, 
+                        damage_log = log(NDAM))
+```
+
+Now, add both the `femininity` and `damage` branches to our multiverse object. 
+
+```{r addBranches, exercise=TRUE, exercise.setup="addBranchExc", include=FALSE }
+hurricane_mv <- hurricane_mv %>% add_mutate_branch(femininity, damage)
+```
+
+```{r addBranchesExc, exercise=TRUE, exercise.setup="addBranchExc", exercise.blanks=TRUE }
+hurricane_mv <- hurricane_mv %>% ____
+```
+
+```{r addBranchesExc-hint-1}
+hurricane_mv <- hurricane_mv %>% add_mutate_branch( # branches
+  )
+```
+
+```{r universes, echo=FALSE}
+library(learnr)
+question("How many universes should be in our multiverse",
+  answer("1"),
+  answer("7"),
+  answer("12", correct = TRUE),
+  answer("20")
+)
+```
+
+
+```{r summaryMv, exercise.eval=TRUE, exercise=TRUE, echo=FALSE}
+library(learnr)
+library(mverse)
+hurricane_mv <- create_multiverse(hurricane)
+death_outliers <- filter_branch(obs_all = TRUE, 
+                                obs_noKat = Name != 'Katrina',
+                                obs_noKatAud = !(Name %in% c('Katrina', 'Audrey')))
+hurricane_mv <- hurricane_mv %>% add_filter_branch(death_outliers)
+femininity <- mutate_branch(binary_gender = Gender_MF, 
+                            cts_gender = MasFem)
+damage <- mutate_branch( damage_orig = NDAM, 
+                        damage_log = log(NDAM))
+hurricane_mv <- hurricane_mv %>% add_mutate_branch(femininity, damage)
+summary(hurricane_mv)
+```
+
+
+
+
+
+rmarkdown::run("GLMmodelling.Rmd")
