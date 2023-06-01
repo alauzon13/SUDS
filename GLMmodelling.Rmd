@@ -56,6 +56,23 @@ references:
       family: Althoff
     - given: Jeffrey
       family: Heer
+  - id: spec
+    title: "Specification curve analysis"
+    type: article-journal
+    URL: https://www.nature.com/articles/s41562-020-0912-z
+    issued:
+      year: 2020
+      month: 7
+      day: 27
+    accessed:
+      year: 2023
+    author:
+    - given: Uri
+      family: Simonsohn
+    - given: Joseph
+      family: Simmons
+    - given: Leif D. 
+      family: Nelson
 ---
 
 
@@ -65,9 +82,7 @@ library(tidyverse)
 library(ggplot2)
 library(mverse)
 
-# install.packages("remotes")
-remotes::install_github("rstudio/gradethis")
-gradethis::gradethis_setup()
+
 #install.packages("tidyverse")
 
 ```
@@ -156,7 +171,7 @@ There are a few different ways to address outliers in data wrangling. Firstly, w
 
 The code below creates a branch that considers all three outlier-handling options. 
 
-```{r filter_branch, exercise=TRUE, exercise.eval=TRUE, exercise.setup="createMV"}
+```{r outlierBranch, exercise=TRUE, exercise.eval=TRUE, exercise.setup="createMV"}
 death_outliers <- filter_branch(obs_all = TRUE, 
                                 obs_noKat = Name != 'Katrina',
                                 obs_noKatAud = !(Name %in% c('Katrina', 'Audrey')))
@@ -164,22 +179,22 @@ death_outliers <- filter_branch(obs_all = TRUE,
 
 Now, add this branch to `hurricane_mv` using the `add_filter_branch()` function. 
 
-```{r addBranch, exercise.setup="filter_branch", include=FALSE}
+```{r addOutlier, exercise.setup="outlierBranch", include=FALSE}
 hurricane_mv <- hurricane_mv %>% add_filter_branch(death_outliers)
 ```
 
-```{r addBranchExc,  exercise=TRUE, exercise.setup = "filter_branch", exercise.blanks = TRUE}
+```{r addOutlierExc,  exercise=TRUE, exercise.setup = "outlierBranch", exercise.blanks = TRUE}
 hurricane_mv <- hurricane_mv %>% ____
 ```
 
 
-```{r addBranchExc-solution}
+```{r addOutlierExc-solution}
 hurricane_mv <- hurricane_mv %>% add_filter_branch(death_outliers)
 ```
 
 Now, call the `summary()` function on the mutliverse object `hurricane_mv` to ensure that there are three universes, and that each universe corresponds to an outlier-handling option. 
 
-```{r summary, exercise=TRUE, exercise.setup="addBranch"}
+```{r summary, exercise=TRUE, exercise.setup="addOutlier"}
 
 ```
 
@@ -191,14 +206,14 @@ Now suppose we want to consider two different definitions of femininity as provi
 
 The code below creates the `femininity` branch. 
 
-```{r mutate_branch, exercise=TRUE, exercise.eval=TRUE, exercise.setup="addBranch"}
+```{r femBranch, exercise=TRUE, exercise.eval=TRUE, exercise.setup="addOutlier"}
 femininity <- mutate_branch(binary_gender = Gender_MF, 
                             cts_gender = MasFem)
 ```
 
 Suppose we also want to include normalized damage (NDAM) in our analysis. Below is a histogram of the `NDAM` variable.
 
-```{r NDAMhist, exercise=TRUE, exercise.setup="mutate_branch", exercise.eval=TRUE}
+```{r NDAMhist, exercise=TRUE, exercise.setup="femBranch", exercise.eval=TRUE}
 hurricane %>% 
   ggplot(aes(NDAM)) + 
   geom_histogram(bins = 25) + 
@@ -212,43 +227,40 @@ Following the creation of the `femininity` branch above, create a branch named `
 * `damage_orig`, which the same as the raw `NDAM` value in the dataset
 * `damage_log`, which is the log of the `NDAM` value in the dataset
 
-```{r mutate_branchDam,  exercise.setup="addBranch", include=FALSE}
+```{r damageBranch,  exercise.setup="femBranch", include=FALSE}
 damage <- mutate_branch(damage_orig = NDAM, 
                         damage_log = log(NDAM))
 ```
 
-```{r mutate_branchDamExc, exercise=TRUE, exercise.setup="addBranchExc"}
+```{r damageBranchExc, exercise=TRUE, exercise.setup="femBranch"}
 
 ```
 
-```{r mutate_branchDamExc-hint-1}
-damage <- 
-```
-
-```{r mutate_branchDamExc-hint-2}
-damage <- mutate_branch( # create damage_orig,
+```{r damageBranchDamExc-hint-1}
+damage <- mutate_branch( # create damage_orig 
+                          ,
                          # create damage_log
   )
 ```
 
-```{r mutate_branchDamExc-hint-3}
+```{r damageBranchDamExc-hint-2}
 damage <- mutate_branch( damage_orig = NDAM,
                          # create damage_log
   )
 ```
 
-```{r mutate_branchDamExc-solution}
+```{r damageBranchDamExc-solution}
 damage <- mutate_branch( damage_orig = NDAM, 
                         damage_log = log(NDAM))
 ```
 
 Now, add both the `femininity` and `damage` branches to our multiverse object. 
 
-```{r addBranches, exercise.setup="mutate_branchDam", include=FALSE}
+```{r addBranches, exercise.setup="damageBranch", include=FALSE}
 hurricane_mv <- hurricane_mv %>% add_mutate_branch(femininity, damage)
 ```
 
-```{r addBranchesExc, exercise=TRUE, exercise.setup="mutate_branchDam", exercise.blanks=TRUE }
+```{r addBranchesExc, exercise=TRUE, exercise.setup="damageBranch", exercise.blanks=TRUE }
 hurricane_mv <- hurricane_mv %>% ____
 ```
 
@@ -288,8 +300,364 @@ summary(hurricane_mv)
 ```
 
 
+#### Branches for GLM modelling
+
+`mverse` can also define different `glm()` models as branches. The formula for a `glm` model (e.g., `y ~ x`) can be defined using `formula_branch()`, and `family_branch()` defines the member of the exponential family used via a `family` object.
+
+We can create formulas using the branches above or simply use the columns in dataframe. Suppose we want to use `damage` and `femininity` to predict `alldeaths`. We can define a branch `models` using the `formula_branch()` function, and can add it to our multiverse using `add_formula_branch()`. 
+
+```{r models, exercise=TRUE, exercise.setup="addBranches", exercise.eval=TRUE}
+models <- formula_branch(alldeaths ~ damage + femininity)
+hurricane_mv <- hurricane_mv %>% add_formula_branch(models)
+```
 
 
+Now we have added the `models` branch to our multiverse object. Notice that this branch only has one option -- in other words, all existing universes are prescribed the same formula. After adding the `models` branch, how many universes exist in our multiverse? 
+
+```{r universesModels, echo=FALSE}
+library(learnr)
+question("How many universes should be in our multiverse?",
+  answer("12", correct = TRUE),
+  answer("24"),
+  answer("144"),
+  incorrect = "If there are 12 existing universes, and our new branch only has one option, how many combinations result? ",
+      allow_retry = TRUE,
+  post_message = "You got it! Since the multiverse had 12 universes, and the models branch has 1 option, we get 12 x 1 = 12 universes in total."
+)
+```
+
+To check your understanding, call `summary()` on our multiverse to see how many universes it contains. 
+
+```{r modelsSummary, exercise.setup = 'models', exercise=TRUE}
+
+```
+
+```{r modelsSummary-solution}
+summary(hurricane_mv)
+```
+
+Finally, let's create a `distributions` branch that defines two different members of the Exponential family using `family_branch()`.
+
+```{r familyBranch, exercise=TRUE, exercise.setup="models", exercise.eval=TRUE}
+distributions <- family_branch(poisson, gaussian)
+hurricane_mv <- hurricane_mv %>% add_family_branch(distributions)
+```
+
+After adding the `distributions` branch to our multiverse, how many universes should it contain? 
+
+```{r universesDistributions, echo=FALSE}
+library(learnr)
+question("How many universes should be in our multiverse?",
+  answer("12"),
+  answer("24", correct = TRUE),
+  answer("144"),
+  incorrect = "If there are 12 existing universes, and our new branch has two options, how many combinations result? ",
+      allow_retry = TRUE,
+  post_message = "You got it! Since the multiverse had 12 universes, and the distribution branch has 2 options, we get 12 x 2 = 24 universes in total."
+)
+```
+
+To check your understanding, call `summary()` on our multiverse to see how many universes it contains. 
+
+```{r distributionsSummary, exercise.setup = 'familyBranch', exercise=TRUE}
+
+```
+
+```{r distributionsSummary-solution}
+summary(hurricane_mv)
+```
+
+When dealing with multiverse problems, visualization can be helpful to understand the composition of each universe. The `multiverse_tree()` function can be used to visualize multiverses, whether you want to view the entire thing or just a subset of branches.
+
+The tree below shows the entire `hurricane_mv` multiverse. Feel free to adjust `label_size` and `label_angle`. 
+
+```{r treeAll, exercise=TRUE, exercise.eval=TRUE, exercise.setup="familyBranch"}
+multiverse_tree(hurricane_mv, label_size = 2, label_angle = 45, label=TRUE)
+```
+
+Suppose that you just want to view the `models` and `distribution` branches. Then, you can specify these branches as a vector argument to `branches`. 
+
+```{r treeModDist, exercise=TRUE, exercise.eval=TRUE, exercise.setup="familyBranch"}
+multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("models", "distributions"))
+```
+
+Create a tree that just shows the `femininity` and `damage` branches. Use `label_size = 4` and `label_angle = 45`.
+
+```{r treeFemDam, include=FALSE, exercise.setup="familyBranch"}
+multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("femininity", "damage"))
+```
+
+```{r treeFemDamExc, exercise=TRUE, exercise.setup="familyBranch"}
+
+```
+
+```{r treeFemDamExc-solution, exercise=TRUE, exercise.setup="familyBranch"}
+multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("femininity", "damage"))
+
+```
 
 
+Now we are ready to fit the GLM specified in the `models` to each universe. We can execute this process by calling the `glm_mverse()` function on our multiverse object. 
+
+```{r glmExecute, exercise=TRUE, exercise.eval=TRUE, exercise.setup="treeFemDam"}
+glm_mverse(hurricane_mv)
+summary(hurricane_mv)
+```
+
+Be careful not to mistake the number of rows in the multiverse summary with the number of universes. We still only have 24 universes, but each universe now spreads across three rows -- each row corresponds to one of the model coefficients (intercept, coefficient for damage, coefficient for femininity).
+
+Suppose you want to investigate how a particular model coefficient behaves across the different universe. The function `spec_curve()` can help you investigate these questions. 
+
+Proposed by @spec, specification curves allow users to identify influential decisions, such as how a variable is defined, what kind of model is used, etc. By presenting coefficient estimates and standard errors in this format, users can identify possible sources of noise and bias in their analysis.
+
+The specification curve for the coefficient of `femininity` is shown below.
+
+```{r specFem, exercise=TRUE, exercise.eval=TRUE, exercise.setup="glmExecute"}
+spec_curve(hurricane_mv, var = "femininity", color_order = TRUE)
+```
+
+What do you notice? 
+
+<TODO: some kind of question here?>
+
+
+#### Condition Branches 
+
+Recall the distribution of `alldeaths`. 
+
+```{r allDeathsHist2, exercise=TRUE, exercise.eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, exercise.setup="specFem"}
+hurricane %>% 
+  ggplot(aes(log(alldeaths+1))) + 
+  geom_histogram(bins = 25) + 
+  stat_bin(aes(label = ..count..), bins = 25, geom = "text", vjust = -.7, size = 2)
+```
+
+Even if we were to remove the two outliers (Hurricanes Katrina and Audrey), the assumption that `alldeaths` follows a Normal distribution is tenuous -- but this is an assumption for our GLM process to be valid. We can check this condition further by creating a quantile-quantile (QQ) plot of the variable.
+
+```{r allDeathsQQ2, exercise=TRUE, exercise.eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, exercise.setup="specFem"}
+hurricane %>% ggplot(aes(sample = alldeaths)) + stat_qq() + stat_qq_line()
+```
+
+Given the deviation of the dots (the data) from the solid line (a normal distribution), it is unlikely that `alldeaths` is Normally distributed.
+
+However, transforming the `alldeaths` using $t(x)=\log(x+1)$ could result in a dependent variable that is closer to a Normal distribution. Note: we shift the variable over by one ($x+1$) because many hurricanes have 0 deaths, but $log(0)$ is undefined.  
+
+Let's apply the transformation and see how the histogram and QQ plot changes. 
+
+```{r allDeathsTransformedHist, exercise=TRUE, exercise.eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, exercise.setup="specFem"}
+hurricane %>% 
+  ggplot(aes(log(alldeaths+1))) + 
+  geom_histogram(bins = 25) + 
+  stat_bin(aes(label = ..count..), bins = 25, geom = "text", vjust = -.7, size = 2)
+```
+
+```{r allDeathsTransformedQQ, exercise=TRUE, exercise.eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, exercise.setup="specFem"}
+hurricane %>% mutate(logd = log(alldeaths+1)) %>% ggplot(aes(sample = logd)) + stat_qq() + stat_qq_line()
+```
+
+While there is still some skewness/deviation, the transformation certainly helped bring the `alldeaths` distribution closer to Normal. 
+
+Now, let's set up a similar multiverse analysis to the one above. 
+
+Create the multiverse. 
+
+```{r mv1, include=FALSE, exercise.setup="setup"}
+hurricane_mv <- create_multiverse(hurricane)
+```
+
+```{r mv1Exc, exercise.setup="setup", exercise=TRUE}
+
+```
+
+```{r mv1Exc-hint}
+hurricane_mv <- create_multiverse( #data
+  )
+```
+
+```{r mv1Exc-solution}
+hurricane_mv <- create_multiverse(hurricane)
+```
+
+Create a branch called `dep_var` that considers `alldeaths` as well as `log(alldeaths + 1)`. 
+
+```{r mv2, include=FALSE, exercise.setup="mv1"}
+dep_var <- mutate_branch(alldeaths, log(alldeaths + 1))
+```
+
+```{r mv2Exc, exercise.setup="mv1", exercise=TRUE}
+
+```
+
+```{r mv2Exc-hint}
+dep_var <- mutate_branch( # insert options
+  )
+```
+
+```{r mv2Exc-solution}
+dep_var <- mutate_branch(alldeaths, log(alldeaths + 1))
+```
+Create a branch called `femininity` that considers two definitions of gender from the dataset: `Gender_MF` and `MasFem`. Hint: look at the previous example.
+
+```{r mv3, include=FALSE, exercise.setup="mv2"}
+femininity <- mutate_branch(binary_gender = Gender_MF, 
+                            cts_gender = MasFem)
+```
+
+```{r mv3Exc, exercise.setup="mv2", exercise=TRUE}
+
+```
+
+```{r mv3Exc-hint}
+femininity <- mutate_branch( # insert options
+  )
+```
+
+```{r mv3Exc-solution}
+femininity <- mutate_branch(binary_gender = Gender_MF, 
+                            cts_gender = MasFem)
+```
+
+Create a branch called `damage` that considers `damage` as well as `log(damage)`.
+
+```{r mv4, include=FALSE, exercise.setup="mv3"}
+damage <- mutate_branch(damage_orig = NDAM, 
+                        damage_log = log(NDAM))
+```
+
+```{r mv4Exc, exercise.setup="mv3", exercise=TRUE}
+
+```
+
+```{r mv4Exc-hint}
+damage <- mutate_branch( # insert options
+  )
+```
+
+```{r mv4Exc-solution}
+damage <- mutate_branch(binary_gender = Gender_MF, 
+                            cts_gender = MasFem)
+```
+
+Create a branch called `models` that defines the GLM for each universe: `dep_var ~ damage + femininity`. 
+
+
+```{r mv5, include=FALSE, exercise.setup="mv4"}
+models <- formula_branch(dep_var ~ damage + femininity)
+```
+
+```{r mv5Exc, exercise.setup="mv4", exercise=TRUE}
+
+```
+
+```{r mv5Exc-hint}
+models <- formula_branch( # insert options
+  )
+```
+
+```{r mv5Exc-solution}
+models <- formula_branch(dep_var ~ damage + femininity)
+
+```
+
+Create a branch called distributions that considers two possible Exponential families, `poisson` and `gaussian`. 
+
+```{r mv6, include=FALSE, exercise.setup="mv5"}
+distributions <- family_branch(poisson, gaussian)
+
+```
+
+```{r mv6Exc, exercise.setup="mv5", exercise=TRUE}
+
+```
+
+```{r mv6Exc-hint}
+distributions <- family_branch( # insert options
+  )
+```
+
+```{r mv6Exc-solution}
+distributions <- family_branch(poisson, gaussian)
+
+```
+
+Add these branches to the multiverse object. 
+
+```{r mv7, include=FALSE, exercise.setup="mv6"}
+hurricane_mv <- hurricane_mv %>% 
+  add_mutate_branch(dep_var, femininity, damage) %>%
+  add_formula_branch(models) %>% 
+  add_family_branch(distributions)
+```
+
+```{r mv7Exc, exercise.setup="mv6", exercise=TRUE}
+
+```
+
+```{r mv7Exc-hint}
+hurricane_mv <- hurricane_mv %>% 
+ # add branches 
+```
+
+```{r mv7Exc-solution}
+hurricane_mv <- hurricane_mv %>% 
+  add_mutate_branch(dep_var, femininity, damage) %>%
+  add_formula_branch(models) %>% 
+  add_family_branch(distributions)
+```
+
+Use `multiverse_tree()` to display the multiverse tree of `dep_var` and `distributions`. Use `label_size=4` and `label_angle=45`. 
+
+```{r mv8, include=FALSE, exercise.setup="mv7" }
+multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("dep_var", "distributions"))
+```
+
+```{r mv8Exc, exercise.setup="mv7", exercise=TRUE }
+
+```
+
+```{r mv8Exc-hint}
+multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("dep_var", "distributions"))
+```
+
+However, suppose we don't necessarily want to have all combinations of all the branches in our multiverse. Perhaps we only want to specify a Gaussain family to analyses using `log(alldeaths + 1)` and a Poisson family to analyses using `alldeaths`. In this case, we can make use of the `branch_condition()` method and use `add_branch_condition()` to add it to `hurricane_mv`.
+
+```{r mv9, exercise=TRUE, exercise.setup="mv8", exercise.eval=TRUE}
+match_poisson <- branch_condition(alldeaths, poisson)
+
+```
+
+
+Before adding the condition, we had a multiverse where there were 2 options for the dependent variabe, 2 options for femininity, 2 options for damage, 1 option for the model, and 2 options for the distribution family. After imposing this condition on our multiverse, how many universes should it contain? 
+
+```{r universesGLM, echo=FALSE}
+library(learnr)
+question("How many universes should be in our multiverse?",
+  answer("8", correct = TRUE),
+  answer("12"),
+  answer("16"),
+  incorrect = "Before, each option for dependent variable was paired with each option distribution family. Now, each option for dependent variable can only be paired with one kind of distribution family. What effect does this have?",
+      allow_retry = TRUE,
+  post_message = "You got it! Before imposing the condition, we had 2 x 2 x 2 x 1 x 2 = 16 universes. However, when each option for the dependent variable can only be paired with one kind of distribution family, we are left with 2 x 2 x 2 x 1 x 1 = 8 universes."
+)
+```
+
+The multiverse tree now shows that `log(alldeaths + 1)` will _only_ be modelled as Gaussian and `alldeaths` will _only_ be modelled as Poisson.
+
+```{r mv10, excercise=TRUE, exercise.setup="mv9", exercise.eval=TRUE }
+multiverse_tree(hurricane_mv, label_size=4, label_angle = 45, label = TRUE, c("dep_var", "distributions"))
+```
+
+Now, apply `glm_mverse()` to our multiverse object. 
+
+```{r mv11, exercise=TRUE, exercise.setup="mv10", exercise.eval=TRUE}
+glm_mverse(hurricane_mv)
+summary(hurricane_mv)
+```
+
+A summary of the models on the `femininity` coefficients is shown in the specification curve.
+
+```{r mv12, exercise=TRUE, exercise.setup="mv11", exercise.eval=TRUE}
+spec_curve(hurricane_mv, var = "femininity", color_order = TRUE)
+
+```
 rmarkdown::run("GLMmodelling.Rmd")
