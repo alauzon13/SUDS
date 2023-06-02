@@ -81,10 +81,7 @@ library(learnr)
 library(tidyverse)
 library(ggplot2)
 library(mverse)
-
-
 #install.packages("tidyverse")
-
 ```
 
 ## Introduction to GLMs in `mverse`
@@ -116,7 +113,6 @@ hurricane_mv <- create_multiverse(hurricane)
 ```
 
 ```{r createMVExc, exercise = TRUE, exercise.setup = "setup"}
-
 ```
 
 ```{r createMVExc-hint}
@@ -162,7 +158,6 @@ hurricane %>%
   arrange(desc(alldeaths)) %>% 
   select(Name, alldeaths) %>% 
   head()
-
 ```
 
 It seems like hurricanes Katrina and Audrey have the most extreme death counts. 
@@ -195,7 +190,6 @@ hurricane_mv <- hurricane_mv %>% add_filter_branch(death_outliers)
 Now, call the `summary()` function on the mutliverse object `hurricane_mv` to ensure that there are three universes, and that each universe corresponds to an outlier-handling option. 
 
 ```{r summary, exercise=TRUE, exercise.setup="addOutlier"}
-
 ```
 
 ```{r summary-solution}
@@ -232,24 +226,7 @@ damage <- mutate_branch(damage_orig = NDAM,
                         damage_log = log(NDAM))
 ```
 
-```{r damageBranchExc, exercise=TRUE, exercise.setup="femBranch"}
-
-```
-
-```{r damageBranchDamExc-hint-1}
-damage <- mutate_branch( # create damage_orig 
-                          ,
-                         # create damage_log
-  )
-```
-
-```{r damageBranchDamExc-hint-2}
-damage <- mutate_branch( damage_orig = NDAM,
-                         # create damage_log
-  )
-```
-
-```{r damageBranchDamExc-solution}
+```{r damageBranch-solution}
 damage <- mutate_branch( damage_orig = NDAM, 
                         damage_log = log(NDAM))
 ```
@@ -285,14 +262,12 @@ question("How many universes should be in our multiverse?",
   incorrect = "Remember that the outlier branch has 3 options, the femininity branch has 2 options, and the damage branch has 2 options. Each combination of these options corresponds to a universe. How many different combinations are there? ",
       allow_retry = TRUE,
   post_message = "You got it! Since the outlier branch has 3 options, the femininity branch has 2 options, and the damage branch has 2 options, we get 3 x 2 x 2 = 12 universes in total."
-
 )
 ```
 
 To check your understanding, call `summary()` on our multiverse to see how many universes it contains. 
 
 ```{r summaryExc, exercise.setup = 'addBranches', exercise=TRUE}
-
 ```
 
 ```{r summaryExc-solution}
@@ -329,7 +304,6 @@ question("How many universes should be in our multiverse?",
 To check your understanding, call `summary()` on our multiverse to see how many universes it contains. 
 
 ```{r modelsSummary, exercise.setup = 'models', exercise=TRUE}
-
 ```
 
 ```{r modelsSummary-solution}
@@ -360,7 +334,6 @@ question("How many universes should be in our multiverse?",
 To check your understanding, call `summary()` on our multiverse to see how many universes it contains. 
 
 ```{r distributionsSummary, exercise.setup = 'familyBranch', exercise=TRUE}
-
 ```
 
 ```{r distributionsSummary-solution}
@@ -371,29 +344,27 @@ When dealing with multiverse problems, visualization can be helpful to understan
 
 The tree below shows the entire `hurricane_mv` multiverse. Feel free to adjust `label_size` and `label_angle`. 
 
-```{r treeAll, exercise=TRUE, exercise.eval=TRUE, exercise.setup="familyBranch"}
+```{r treeAll, exercise=TRUE, exercise.eval=TRUE, exercise.setup="familyBranch", warning=FALSE}
 multiverse_tree(hurricane_mv, label_size = 2, label_angle = 45, label=TRUE)
 ```
 
 Suppose that you just want to view the `models` and `distribution` branches. Then, you can specify these branches as a vector argument to `branches`. 
 
-```{r treeModDist, exercise=TRUE, exercise.eval=TRUE, exercise.setup="familyBranch"}
+```{r treeModDist, exercise=TRUE, exercise.eval=TRUE, exercise.setup="familyBranch", warning=FALSE}
 multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("models", "distributions"))
 ```
 
 Create a tree that just shows the `femininity` and `damage` branches. Use `label_size = 4` and `label_angle = 45`.
 
-```{r treeFemDam, include=FALSE, exercise.setup="familyBranch"}
+```{r treeFemDam, include=FALSE, exercise.setup="familyBranch", warning=FALSE}
 multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("femininity", "damage"))
 ```
 
 ```{r treeFemDamExc, exercise=TRUE, exercise.setup="familyBranch"}
-
 ```
 
-```{r treeFemDamExc-solution, exercise=TRUE, exercise.setup="familyBranch"}
+```{r treeFemDamExc-solution}
 multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, branches = c("femininity", "damage"))
-
 ```
 
 
@@ -466,7 +437,6 @@ hurricane_mv <- create_multiverse(hurricane)
 ```
 
 ```{r mv1Exc, exercise.setup="setup", exercise=TRUE}
-
 ```
 
 ```{r mv1Exc-hint}
@@ -485,7 +455,6 @@ dep_var <- mutate_branch(alldeaths, log(alldeaths + 1))
 ```
 
 ```{r mv2Exc, exercise.setup="mv1", exercise=TRUE}
-
 ```
 
 ```{r mv2Exc-hint}
@@ -504,7 +473,6 @@ femininity <- mutate_branch(binary_gender = Gender_MF,
 ```
 
 ```{r mv3Exc, exercise.setup="mv2", exercise=TRUE}
-
 ```
 
 ```{r mv3Exc-hint}
@@ -525,7 +493,6 @@ damage <- mutate_branch(damage_orig = NDAM,
 ```
 
 ```{r mv4Exc, exercise.setup="mv3", exercise=TRUE}
-
 ```
 
 ```{r mv4Exc-hint}
@@ -546,7 +513,6 @@ models <- formula_branch(dep_var ~ damage + femininity)
 ```
 
 ```{r mv5Exc, exercise.setup="mv4", exercise=TRUE}
-
 ```
 
 ```{r mv5Exc-hint}
@@ -556,18 +522,15 @@ models <- formula_branch( # insert options
 
 ```{r mv5Exc-solution}
 models <- formula_branch(dep_var ~ damage + femininity)
-
 ```
 
 Create a branch called distributions that considers two possible Exponential families, `poisson` and `gaussian`. 
 
 ```{r mv6, include=FALSE, exercise.setup="mv5"}
 distributions <- family_branch(poisson, gaussian)
-
 ```
 
 ```{r mv6Exc, exercise.setup="mv5", exercise=TRUE}
-
 ```
 
 ```{r mv6Exc-hint}
@@ -577,7 +540,6 @@ distributions <- family_branch( # insert options
 
 ```{r mv6Exc-solution}
 distributions <- family_branch(poisson, gaussian)
-
 ```
 
 Add these branches to the multiverse object. 
@@ -590,7 +552,6 @@ hurricane_mv <- hurricane_mv %>%
 ```
 
 ```{r mv7Exc, exercise.setup="mv6", exercise=TRUE}
-
 ```
 
 ```{r mv7Exc-hint}
@@ -612,7 +573,6 @@ multiverse_tree(hurricane_mv, label = TRUE, label_size = 4, label_angle = 45, br
 ```
 
 ```{r mv8Exc, exercise.setup="mv7", exercise=TRUE }
-
 ```
 
 ```{r mv8Exc-hint}
@@ -623,7 +583,6 @@ However, suppose we don't necessarily want to have all combinations of all the b
 
 ```{r mv9, exercise=TRUE, exercise.setup="mv8", exercise.eval=TRUE}
 match_poisson <- branch_condition(alldeaths, poisson)
-
 ```
 
 
@@ -658,6 +617,5 @@ A summary of the models on the `femininity` coefficients is shown in the specifi
 
 ```{r mv12, exercise=TRUE, exercise.setup="mv11", exercise.eval=TRUE}
 spec_curve(hurricane_mv, var = "femininity", color_order = TRUE)
-
 ```
 rmarkdown::run("GLMmodelling.Rmd")
