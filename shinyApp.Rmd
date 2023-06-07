@@ -1,0 +1,660 @@
+---
+title: "ShinyApp: Soccer"
+output: html_document
+runtime: shiny
+date: "2023-06-05"
+link-citations: yes
+references:
+  - id: datasrc
+    title: "Many analysts, one dataset: Making transparent how variations in anlytical choices affect results"
+    type: entry
+    issued:
+      year: 2014
+      month: 4
+      day: 24
+    accessed:
+      year: 2019
+    URL: https://osf.io/gvm2z/
+    author:
+    - given: Raphael 
+      family: Silberzahn 
+    - given: "Eric Luis" 
+      family: Uhlmann 
+    - given: Dan 
+      family: Martin 
+    - given: Pasquale 
+      family: Anselmi 
+    - given: Frederik 
+      family: Aust 
+    - given: "Eli C."
+      family: Awtrey
+    - given: Štěpán
+      family: Bahník 
+    - given: Feng
+      family: Bai 
+    - given: Colin
+      family: Bannard
+    - given: Evelina
+      family: Bonnier
+    - given: Rickard
+      family: Carlsson
+    - given: Felix
+      family: Cheung
+    - given: Garret
+      family: Christensen
+    - given: Russ
+      family: Clay
+    - given: "Maureen A."
+      family: Craig
+    - given: Anna 
+      family: "Dalla Rosa"
+    - given: Lammertjan
+      family: Dam
+    - given: "Mathew H."
+      family: Evans
+    - given: "Ismael Flores"
+      family: Cervantes
+    - given: Nathan
+      family: Fong
+    - given: Monica
+      family: Gamez-Djokic
+    - given: Andreas
+      family: Glenz
+    - given: Shauna
+      family: Gordon-McKeon
+    - given: Tim
+      family: Heaton
+    - given: "Karin Hederos" 
+      family: Eriksson 
+    - given: Moritz
+      family: Heene
+    - given: "Alicia Hofelich"
+      family: Mohr 
+    - given: Kent
+      family: Hui
+    - given: Magnus
+      family: Johannesson
+    - given: Jonathan
+      family: Kalodimos
+    - given: Erikson
+      family: Kaszubowski
+    - given: Deanna
+      family: Kennedy
+    - given: Ryan
+      family: Lei
+    - given: "Thomas Andrew"
+      family: Lindsay
+    - given: Silvia
+      family: Liverani
+    - given: Christopher
+      family: Madan
+    - given: "Daniel C."
+      family: Molden 
+    - given: Eric 
+      family: Molleman
+    - given: "Richard D."
+      family: Morey
+    - given: Laetitia
+      family: Mulder
+    - given: "Bernard A." 
+      family: Nijstad
+    - given: Bryson
+      family: Pope
+    - given: Nolan
+      family: Pope
+    - given: "Jason M."
+      family: Prenoveau
+    - given: Floor
+      family: Rink
+    - given: Egidio
+      family: Robusto
+    - given: Hadiya
+      family: Roderique
+    - given: Anna
+      family: Sandberg
+    - given: Elmar
+      family: Schlueter
+    - given: Felix
+      family: S
+    - given: "Martin F." 
+      family: Sherman
+    - given: "S. Amy"
+      family: Sommer
+    - given: "Kristin Lee"
+      family: Sotak
+    - given: "Seth M."
+      family: Spain
+    - given: Christoph
+      family: Spörlein 
+    - given: Tom
+      family: Stafford
+    - given: Luca
+      family: Stefanutti
+    - given: Susanne
+      family: Täuber
+    - given: Johannes
+      family: Ullrich
+    - given: Michelangelo 
+      family: Vianello 
+    - given: Eric-Jan 
+      family: Wagenmakers 
+    - given: Maciej 
+      family: Witkowiak 
+    - given: Sangsuk 
+      family: Yoon 
+    - given: Brian A. 
+      family: Nosek
+---
+
+```{r setup, include=FALSE}
+library(shiny)
+library(tidyverse)
+library(mverse)
+library(DT)
+library(stringr)
+
+```
+
+
+## Introduction
+
+
+During the research process, scientists make a number of decisions about what data to include, how to process information, and which analyses to run. At each decision point, rarely is there a single "correct" step to be taken. Often, researchers make an arbitrary choice from an array of viable possibilities. For example, one scientist might classify individuals that are above 175cm as *Tall*, whereas another might choose 170 or 180cm as the cutoff. One study might exclude outliers from an analysis, another may choose to include them. One researcher may include *Gender* as a variable where another might include *Sex*. 
+
+
+Researchers will often frame these arbitrary choices as the only analysis path that can be taken. However, any one of these choices may influence results. Instead of thinking of statistical analysis as a linear path, it is really more of a tree network: there are many branching points, and different combinations of decisions lead to different results. Though a study might focus on a single set of choices that led them to a particular result, rarely is it acknowledged that there are other possibilities. This is where the concept of **multiverse analysis** comes in handy. 
+
+If we consider each combination of scientific choices to be a *universe*, then the *multiverse* can be understood as the collection of all possible analysis pathways. When we apply the analysis of interest to all possible pathways, it allows us to understand how these decisions impact results. 
+
+The purpose of this tutorial is to educate users with high-school level statistics backgrounds about multiverse analysis. We will be using the `mverse` R package to construct our multiverses, but no programming is necessary to complete this tutorial. 
+
+## Example
+
+For this example, we will be using a dataset from @datasrc that depicts ratings of professional soccer players' skin tones and the number of red cards they have been issued. When a soccer referee gives a player a red card, they must leave the field immediately. The team must continue the game with one fewer player than their opponent. 
+
+\newline
+
+<p align="center">
+![](https://media.giphy.com/media/Th9wVn7pqzRY07hwNJ/giphy.gif)
+<p align="center">
+
+Red cards are reserved for serious misconduct or breaches of the rules of the game. However, referees must use their own discretion to assess whether a red card is appropriate. As such, it is possible that referees' preexisting biases may impact the choice to issue a red card. One bias of particular concern is the propensity to issue more red cards to players with darker skin tones compared to those with lighter skin tones.
+
+In this example, we will pretend to be researchers interested in answering the following question: 
+
+**Are soccer referees negatively biased towards dark-skinned players?**
+
+### The Data
+
+```{r soccer_bias_load, include=FALSE}
+soccer_bias <- soccer[!is.na(soccer$rater1) & !is.na(soccer$rater2), 
+             c('playerShort', 'redCards', 'rater1', 'rater2')]
+soccer_bias <- unique(soccer_bias)
+soccer_bias <- rename(soccer_bias, player=playerShort)
+soccer_reduced <- soccer_bias[sample(nrow(soccer_bias), 100, replace = FALSE, prob = NULL),]
+```
+
+The soccer dataset contains four variables. The first two columns represent the name of the player and the number of red cards they have received, respectively. The following columns represent an assessment of the player's skin tone by two independent raters. The raters used a 5-point scale to classify players, where `0.0` corresponds to "very light" and `1.0` corresponds to "very dark". 
+
+Feel free to explore the dataset below. 
+
+<br/>
+
+```{r, echo=FALSE}
+datatable(soccer_reduced, extensions = 'AutoFill', options = list(autoFill = TRUE), rownames = FALSE)
+```
+
+### The Analysis
+
+To answer our research question, we need to be able to distinguish between light- and dark-skinned soccer players. However, we have two pieces of information to consider -- the two ratings for each player. We must find a way to obtain a single estimate of player skin tone. 
+
+Let's say that after some consideration, you come up with three possible methods of calculating a skin tone rating using the two variables. First, you can take the average of both ratings. Second, you could take the darker rating (the maximum). Or, you could take the lighter rating (the minimum). You bring these suggestions to your colleague, who prefers to avoid math. They suggest just using the first rater or just using the second rater. 
+
+
+```{r ratingOptionsQuestion, echo=FALSE, warning=FALSE}
+options <- c("Mean of both ratings", "Maximum of ratings", "Minimum of ratings", "First Rating", "Second Rating")
+shinyApp(
+  
+  ui <- fluidPage(
+    checkboxGroupInput("selected",
+"Which of these suggestions are viable options to include in our multiverse?
+", options, width = "600px"
+),
+    actionButton("check", "Check"),
+    verbatimTextOutput("result")
+                  ),
+
+server <- function(input, output, session) {
+  observeEvent(input$check, {
+    selection <- paste(input$selected, collapse = ", ")
+    num <- str_count(selection, ',')
+    output$result <- renderText({
+    ifelse(num == 4, 
+           output$result <- renderText({"Correct! All of the above are possible methods of obtaining one skin tone rating."}),
+           output$result <- renderText({"Try Again. Remember, we're just interested in *possible* options for skin tone rating."})
+)
+  })
+  })
+}, 
+options = list(height=250)
+)
+
+```
+
+
+Let's explore the distributions of each of these options using the histograms below. So, the *Mean* histogram is the distribution of the average of the two ratings for each player, the *Max* histogram is the distribution of the maximum of the two ratings for each player, and so on. Feel free to adjust the number of *Bins* (or "bars"). 
+
+
+```{r, echo=FALSE}
+skin_option_1 <- (soccer_reduced$rater1 + soccer_reduced$rater2) / 2 
+skin_option_2 <- ifelse(soccer_reduced$rater1 > soccer_reduced$rater2, soccer_reduced$rater1, soccer_reduced$rater2)
+skin_option_3 <- ifelse(soccer_reduced$rater1 < soccer_reduced$rater2, soccer_reduced$rater1, soccer_reduced$rater2)
+skin_option_4 <- soccer_reduced$rater1    
+skin_option_5 <- soccer_reduced$rater2  
+shinyApp(
+  
+  ui <- fluidPage(
+    sliderInput("bins", "Number of Bins", min=1, max=10, value=5),
+    plotOutput("plots")
+                  ),
+
+server <- function(input, output, session) {
+  output$plots <- renderPlot({
+    skin_option_all <- data.frame(
+  x = c(skin_option_1, skin_option_2, skin_option_3, skin_option_4, skin_option_5),
+  Option = rep(c(
+    'Option 1: Mean', 'Option 2: Max', 'Option 3: Min', 
+    'Option 4: Rater 1', 'Option 5: Rater 2'), each = length(skin_option_1)
+    )
+  )
+ggplot(data = skin_option_all) +
+  geom_histogram(aes(x = x), bins=input$bins) +
+  labs(title = 'Histogram of player skin tones for each option.',
+       x = 'Skin Tone', y = 'Count') +
+  facet_wrap(. ~ Option)
+  })
+},
+options = list(height = 500)
+)
+```
+
+While all of the distributions tend to be skewed towards the right, the overall shapes of the distributions do differ. Even small differences like this can sometimes impact results.
+
+Both your and your colleague's suggestions are valid ways of defining *Skin Tone*. As such, we've arrived at our first *branching point.* Let's make our first branch in the *Soccer_Bias* multiverse. As you can see in the tree diagram, we now have 5 different univereses in our multiverse -- one for each skin tone rating option. 
+
+```{r, echo=FALSE}
+soccer_bias_mv <- create_multiverse(soccer_reduced)
+skin_tone <- mutate_branch(
+  (rater1 + rater2)/2,
+  ifelse(rater1 > rater2, rater1, rater2),
+  ifelse(rater1 < rater2, rater1, rater2),
+  rater1,
+  rater2
+)
+soccer_bias_mv <- soccer_bias_mv %>% add_mutate_branch(skin_tone)
+```
+
+```{r, echo=FALSE, fig.align='center'}
+multiverse_tree(soccer_bias_mv, label_size=2.5, label = TRUE)
+```
+
+
+Now, let's go back to our research question: Are soccer referees negatively biased towards dark-skinned players? In order to answer this, we need to compare dark-skinned players to light-skinned players in some way. Right now, we have a single rating for each player's skin tone on a 0-to-1 scale (using the methods above), but it would be helpful to have a categorical variable for skin tone for comparison.
+
+
+What are some methods of categorizing player's skin tones using the 0-to-1 rating? 
+
+```{r, echo=FALSE}
+shinyApp(
+  ui <- fluidPage(
+  textAreaInput("possible", "Possible ways to categorize players as light- or dark-skinned?",
+             width = "1000px",
+             height = "100px",), 
+),
+server <- function(input, output) {
+},
+options = list(height = 150)
+)
+```
+
+
+You and your college come up with three ways to categorize players as either dark- or light- skinned:
+
+* If *Skin Tone* is equal to 0, the player will be categorized as "light", and will be "dark" otherwise. 
+
+* If *Skin Tone* is equal to 1, the player will be categorized as "dark", and will be "light" otherwise. 
+
+* If *Skin Tone* is less than or equal to 0.5, the player will be categorized as "light", and will be "dark" otherwise. 
+
+
+```{r, echo=FALSE}
+light_dark <- mutate_branch(
+  ifelse(skin_tone == 0, "light", "dark"), 
+  ifelse(skin_tone == 1, "dark", "light"),
+  ifelse(skin_tone <= 0.5, "light", "dark")
+)
+soccer_bias_mv <- soccer_bias_mv %>% add_mutate_branch(light_dark)
+```
+
+<br/>
+<br/>
+
+Recall that with only the *Skin Tone* branch, our multiverse has 5 universes. If you add a *Category* branch with the three options above, then how many universes will the *Soccer_Bias* multiverse contain? 
+
+
+```{r numMVsQuestion, echo=FALSE}
+options <- c("3", "5", "8", "15")
+shinyApp(
+  
+  ui <- fluidPage(
+    radioButtons("selected",
+"How many universes will be in the multiverse?", options, width = "600px"
+),
+    actionButton("check", "Check"),
+    textOutput("result", inline = TRUE)
+                  ),
+
+server <- function(input, output, session) {
+  observeEvent(input$check, {
+    selection <- input$selected
+    output$result <- renderText({
+    ifelse(selection == "15", 
+           output$result <- renderText({"Correct! Since the Skin Tone branch has 5 options, and the Category branch has 3 options, we get 5 x 3 = 15 universes as a result."}),
+           output$result <- renderText({"Not quite. Remember that the Skin Tone branch has 5 options and the Category branch has 3 options. Each combination of these options corresponds to a universe. How many different combinations are there?"})
+)
+  })
+  })
+}, 
+options=list(height=200)
+)
+
+```
+
+
+To get a better sense of where the 15 universes come from, take a look at the tree diagram below. 
+
+```{r, fig.width = 9, fig.height=7, echo=FALSE}
+multiverse_tree(soccer_bias_mv, label_size=3, label = TRUE, c("skin_tone","light_dark"))
+```
+
+```{r, include=FALSE}
+red_cards <- mutate_branch(redCards)
+soccer_bias_mv <- soccer_bias_mv %>% add_mutate_branch(red_cards)
+execute_multiverse(soccer_bias_mv)
+```
+
+
+```{r, include=FALSE}
+branched <- mverse::extract(soccer_bias_mv)
+```
+
+Now that we have provided options for how to obtain a skin tone rating and how to use that rating to assign categories to players, it is time to return to the research question. How do we determine if referees are negatively biased towards dark-skinned players? 
+
+Well, if referees are giving a significantly larger proportion of red cards out to dark-skinned players than light-skinned players, then this might be evidence of some negative bias towards darker players. 
+
+Before we determine if the difference in proportions is statistically significant for each universe, let's explore what the proportions are across the universes. Use the side panel below to view the different results. 
+
+
+```{r, echo=FALSE}
+
+skin_tone_options <- c("Mean", "Maximum", "Minimum", "Rater 1", "Rater 2")
+category_options <- c("If Skin Tone = 0, then 'Light', 'Dark' otherwise", 
+                      "If Skin Tone = 1, then 'Dark', 'Light' otherwise",
+                      "If Skin Tone <= 0.5, then 'Light', 'Dark' otherwise")
+shinyApp(
+  
+ ui <- fluidPage(
+  sidebarLayout(
+
+    # Sidebar with a slider input
+    sidebarPanel(
+      radioButtons("skintone", "Skin Tone Rating Options", skin_tone_options),
+      radioButtons("category", "Category Options", category_options),
+      actionButton("run", "Run")
+
+    ),
+
+    # Show a plot of the generated distribution
+    mainPanel(
+      plotOutput("plot"),
+    )
+  )
+),
+server <- function(input, output, session) {
+
+  observe({
+    observeEvent(input$run, {
+      if (input$skintone == "Mean") {
+        data <- branched %>%  
+                filter(skin_tone_branch == "(rater1 + rater2)/2") %>% 
+                filter(red_cards > 0)
+        if(input$category == "If Skin Tone = 0, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 0, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone = 1, then 'Dark', 'Light' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 1, \"dark\", \"light\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone <= 0.5, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone <= 0.5, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        
+      }
+      if (input$skintone == "Maximum") {
+        data <- branched %>%  
+                filter(skin_tone_branch == "ifelse(rater1 > rater2, rater1, rater2)") %>% 
+                filter(red_cards > 0)
+        if(input$category == "If Skin Tone = 0, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 0, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone = 1, then 'Dark', 'Light' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 1, \"dark\", \"light\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone <= 0.5, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone <= 0.5, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        
+      }
+      if (input$skintone == "Minimum") {
+        data <- branched %>%  
+                filter(skin_tone_branch == "ifelse(rater1 < rater2, rater1, rater2)") %>% 
+                filter(red_cards > 0)
+        if(input$category == "If Skin Tone = 0, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 0, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone = 1, then 'Dark', 'Light' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 1, \"dark\", \"light\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone <= 0.5, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone <= 0.5, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        
+      }
+      if (input$skintone == "Rater 1") {
+        data <- branched %>%  
+                filter(skin_tone_branch == "rater1") %>% 
+                filter(red_cards > 0)
+        if(input$category == "If Skin Tone = 0, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 0, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone = 1, then 'Dark', 'Light' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 1, \"dark\", \"light\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone <= 0.5, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone <= 0.5, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        
+      }
+      if (input$skintone == "Rater 2") {
+        data <- branched %>%  
+                filter(skin_tone_branch == "rater2") %>% 
+                filter(red_cards > 0)
+        if(input$category == "If Skin Tone = 0, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 0, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone = 1, then 'Dark', 'Light' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone == 1, \"dark\", \"light\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+        if(input$category == "If Skin Tone <= 0.5, then 'Light', 'Dark' otherwise"){
+          output$plot <- renderPlot({
+          data %>% 
+            filter(light_dark_branch == "ifelse(skin_tone <= 0.5, \"light\", \"dark\")") %>% 
+            ggplot( aes(x = light_dark)) + geom_bar(fill = "blue")
+          })}
+      }
+    })
+  })
+
+},
+options=list(height=500)
+)
+```
+
+
+
+Now we will apply a t-test for porportions to test if the proportion of red cards given to dark-skinned players is significantly larger than light-skinned players. 
+
+```{r, include=FALSE}
+universes <- c(1:15)
+
+skin_tone_vec <- as.character(summary(soccer_bias_mv)$skin_tone_branch)
+light_dark_vec <- as.character(summary(soccer_bias_mv)$light_dark_branch)
+
+
+p_vals <- numeric(15)
+props_light <- numeric(15)
+props_dark <- numeric(15)
+
+for(i in 1:15){
+  universe <- branched %>%  filter(universe == i)
+  
+  trials <- nrow(universe %>% filter(red_cards >0))
+
+  cards_light <- nrow(universe %>% filter(light_dark == "light") %>% filter(red_cards > 0))
+  cards_dark <- nrow(universe %>% filter(light_dark == "dark") %>% filter(red_cards > 0))
+  
+  p_val = prop.test(c(cards_dark, cards_light), c(trials, trials), alternative = "greater")$p.value
+  
+  prop_light = cards_light/trials
+  prop_dark = cards_dark/trials
+
+  p_vals[i] = p_val
+  props_light[i] = prop_light
+  props_dark[i] = prop_dark
+}
+
+data_pvals <- data.frame(universes, skin_tone_vec, light_dark_vec, p_vals)
+```
+
+```{r, echo=FALSE}
+shinyApp(
+UI <- fluidPage(
+
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("universe", "Pick a universe",
+                  choices = c(1:15)),
+      textOutput("universe_info")
+    ),
+
+    mainPanel(
+      plotOutput("plot_nice"),
+      textOutput("sig")
+    )
+  )
+),
+
+
+Server <- function(input, output) {
+
+  filtered <- reactive({
+    data_pvals$Specific <- ifelse((data_pvals$universes == input$universe), 1,0)
+    data_pvals$Specific <- as.factor(data_pvals$Specific)
+    return(data_pvals)
+  })
+  
+  output$universe_info <- renderText({
+    info <- filtered() %>% filter(Specific == 1)
+    skin_tone_method <- info[2]
+    category_method <- info[3]
+    paste("Your universe uses the ",  skin_tone_method, " method for skin tone and the ", category_method,  
+          " method for assigning light/dark categories.", sep="\n")
+  })
+  
+  output$plot_nice <- renderPlot({
+    ggplot(data=filtered(), aes(x=universes, y=p_vals, fill=Specific)) + geom_bar(colour="black", stat="identity", show.legend = FALSE) + scale_fill_manual(values=c('grey', 'blue'))
+
+  })
+  
+  output$sig <- renderText({
+    info <- temp <- filtered() %>% filter(Specific == 1)
+    p_val <- info$p_vals
+        if (p_val <= 0.05) {
+            return(str_c("With a p-value of ", round(p_val, 3), ", your findings are significant!"))
+        } else {
+            return(str_c("However, with a p-value of ", round(p_val, 3), ", your findings are NOT significant."))
+        }
+  })
+
+},
+
+options=list(height=500)
+
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
